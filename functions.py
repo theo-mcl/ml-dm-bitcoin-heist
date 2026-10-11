@@ -5,6 +5,176 @@ import pandas as pd
 
 
 
+def pair_plot(data, n_points=2000, plot_type="seaborn", *, features=None,
+              use_log=True, class_mode="binary", diag_kind="hist",
+              random_seed=42, height=2.4, save_path=None, show=True):
+    """Crée un pair-plot statique ou interactif sans modifier data.
+
+    n_points : maximum de points PAR CLASSE (2000 par défaut).
+    plot_type : 'seaborn' pour une figure statique, 'plotly' pour le zoom/survol.
+    features : variables à comparer, par défaut les six mesures du graphe.
+    use_log : log1p par défaut ; False conserve les unités brutes.
+    class_mode : 'binary' (white/autres labels), 'label' (familles originales)
+        ou 'none' (sans classes, n_points maximum sur toute la figure).
+    diag_kind : 'hist' ou 'kde' pour Seaborn. Diagonale masquée dans Plotly.
+    random_seed : graine pour comparer les mêmes points entre les rendus.
+    height : taille d'une case en pouces, adaptée en pixels pour Plotly.
+    save_path : PNG/PDF/SVG pour Seaborn, HTML autonome pour Plotly.
+    show : False crée/exporte la figure sans l'afficher.
+
+    Retourne un PairGrid Seaborn ou une Figure Plotly pour personnalisation.
+    Affecter le retour : grid = pair_plot(data), fig = pair_plot(data,
+    plot_type='plotly'). La distribution des classes de cet échantillon
+    équilibré ne représente pas les proportions du dataset.
+    """
+    from numbers import Integral
+    from pathlib import Path
+
+    # Valider les options avant les calculs pour donner des erreurs explicites.
+    if not isinstance(data, pd.DataFrame):
+        raise TypeError("data doit être un DataFrame pandas.")
+    if plot_type not in {"seaborn", "plotly"}:
+        raise ValueError("plot_type doit être seaborn ou plotly.")
+    if random_seed is not None and (not isinstance(random_seed, Integral) or random_seed < 0):
+        raise ValueError("random_seed doit être un entier non négatif.")
+    if class_mode not in {"binary", "label", "none"}:
+        raise ValueError("class_mode doit être binary, label ou none.")
+    if diag_kind not in {"hist", "kde"}:
+        raise ValueError("diag_kind doit être hist ou kde.")
+    if not np.isfinite(height) or height <= 0:
+        raise ValueError("height doit être positif et fini.")
+    if features is None:
+        features = ["length", "weight", "count", "looped", "neighbors", "income"]
+    elif isinstance(features, str):
+        raise ValueError("features doit être une liste de noms.")
+    else:
+        features = list(features)
+    if len(features) < 2 or len(set(features)) != len(features):
+        raise ValueError("Choisir au moins deux variables distinctes.")
+    if any(col in {"address", "label", "classe"} for col in features):
+        raise ValueError("features doit contenir uniquement des mesures numériques.")
+    required = features + (["label"] if class_mode != "none" else [])
+    absent = [col for col in required if col not in data.columns]
+    if absent:
+        raise ValueError(f"Colonnes absentes : {absent}")
+    path = Path(save_path) if save_path is not None else None
+    if path is not None:
+        extensions = {".html"} if plot_type == "plotly" else {".png", ".pdf", ".svg"}
+        if path.suffix.lower() not in extensions:
+            raise ValueError(f"Extensions acceptées : {sorted(extensions)}")
+
+    # Coordonnées temporaires : aucune conversion ne touche au dataset reçu.
+    viz = data[features].apply(pd.to_numeric, errors="coerce")
+    eligible = viz.notna().all(axis=1) & ~viz.isin([np.inf, -np.inf]).any(axis=1)
+    if use_log:
+        eligible &= viz.ge(0).all(axis=1)
+    if class_mode != "none":
+        labels = data["label"]
+        missing = labels.isna() | labels.map(
+            lambda value: isinstance(value, str) and not value.strip())
+        eligible &= ~missing
+        viz["classe"] = (
+            np.where(labels.eq("white").fillna(False),
+                     "White — non identifié", "Ransomware identifié")
+            if class_mode == "binary" else labels.astype("string"))
+
+    # Plotly conserve les unités originales au survol, même sur les axes log.
+    if plot_type == "plotly":
+        for col in ["address", "date", "label"]:
+            if col in data.columns and col not in viz.columns:
+                viz[col] = data[col]
+        for col in features:
+            viz[f"{col}_brut"] = viz[col]
+    viz = viz.loc[eligible].copy()
+    if viz.empty:
+        raise ValueError("Aucune ligne traçable pour les variables/échelle choisies.")
+
+    # Échantillonner AVANT log1p conserve les mêmes points entre les échelles.
+    # Les classes plus petites sont gardées en entier, sans suréchantillonnage.
+    if class_mode == "none":
+        viz = viz.sample(n=min(n_points, len(viz)), random_state=random_seed)
+    else:
+        viz = pd.concat([
+            group.sample(n=min(n_points, len(group)), random_state=random_seed)
+            for _, group in viz.groupby("classe", observed=True, sort=True)])
+    viz = viz.reset_index(drop=True)
+    if use_log:
+        viz[features] = np.log1p(viz[features])
+    axis_labels = {col: f"log1p({col})" if use_log else col for col in features}
+    palette = {"White — non identifié": "#2A6F97",
+               "Ransomware identifié": "#D1495B"} if class_mode == "binary" else None
+    hue = "classe" if class_mode != "none" else None
+    title = "Relations entre les mesures des adresses Bitcoin"
+    subtitle = "Échelle log1p" if use_log else "Unités brutes"
+    subtitle += f" · {len(viz):,} points"
+    if hue:
+        subtitle += " · échantillon par classe, proportions non représentatives"
+    print(f"Lignes exclues du graphique : {len(data) - int(eligible.sum())}")
+    print(f"Points affichés : {len(viz)}")
+    if hue:
+        _display_report({"effectifs_affiches": viz[hue].value_counts().to_frame("nombre")},
+                        "Échantillon du pair-plot")
+    corner = True
+    if plot_type == "seaborn":
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+
+        # Style local : les autres figures du notebook conservent leur thème.
+        # Nuages rasterisés pour alléger PDF/SVG ; textes et axes vectoriels.
+        
+        with sns.axes_style("whitegrid"), sns.plotting_context("notebook", font_scale=0.9):
+            grid = sns.pairplot(
+                viz, vars=features, hue=hue, palette=palette, corner=corner,
+                diag_kind=diag_kind, height=height,
+                plot_kws={"s": 12, "alpha": 0.3, "linewidth": 0, "rasterized": True},
+                diag_kws={"bins": 30, "stat": "density", "common_norm": False,
+                          "element": "step", "fill": False}
+                if diag_kind == "hist" else {"common_norm": False, "fill": False})
+            # Changer les titres des axes, sans renommer les colonnes sources.
+            for ax in grid.axes.flat:
+                if ax is not None:
+                    ax.set_xlabel(axis_labels.get(ax.get_xlabel(), ax.get_xlabel()))
+                    ax.set_ylabel(axis_labels.get(ax.get_ylabel(), ax.get_ylabel()))
+                    ax.tick_params(labelsize=9)
+            grid.figure.suptitle(f"{title}\n{subtitle}", fontsize=13, y=0.99)
+            grid.figure.subplots_adjust(top=0.90, bottom=0.08, wspace=0.08, hspace=0.08)
+            if path is not None:
+                grid.figure.savefig(path, dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
+            else:
+                # Empêcher l'affichage automatique de Matplotlib dans Jupyter.
+                # L'objet retourné reste disponible pour l'export/personnalisation.
+                plt.close(grid.figure)
+        return grid
+
+    import plotly.express as px
+
+    # Matrice interactive ; pas d'histogrammes sur la diagonale Plotly.
+    hover = {f"{col}_brut": ":,.3f" for col in features}
+    hover.update({col: True for col in ["date", "label"] if col in viz.columns})
+    fig = px.scatter_matrix(
+        viz, dimensions=features, color=hue, color_discrete_map=palette,
+        hover_name="address" if "address" in viz.columns else None,
+        hover_data=hover, labels=axis_labels,
+        title=f"{title}<br><sup>{subtitle}</sup>",
+        height=max(650, int(len(features) * height * 100)),
+        width=max(750, int(len(features) * height * 100)))
+    fig.update_traces(diagonal_visible=False, showupperhalf=not corner,
+                      marker={"size": 4, "opacity": 0.4, "line": {"width": 0}})
+    fig.update_layout(template="plotly_white", dragmode="zoom", hovermode="closest",
+                      font={"size": 11}, legend={"orientation": "h", "y": -0.12},
+                      margin={"l": 80, "r": 40, "t": 100, "b": 120})
+    config = {"scrollZoom": True, "displaylogo": False, "responsive": True,
+              "toImageButtonOptions": {"format": "png", "filename": "pairplot",
+                                       "width": 1800, "height": 1600, "scale": 2}}
+    if path is not None:
+        fig.write_html(path, include_plotlyjs=True, config=config)
+    if show:
+        fig.show(config=config)
+    return fig
+
+
 def _display_report(report, title, display_mode="auto"):
     """Affiche un rapport en HTML adapté pour Jupyter. Permet de rendre les 
     tableaux entièrement. """
