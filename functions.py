@@ -441,3 +441,26 @@ def check_dataset(data, reference_date="2026-10-01", display_mode="auto"):
     # conservent leurs valeurs précises pour une analyse ultérieure.
     _display_report(report, "Vérification du dataset", display_mode)
     return report
+
+
+
+def split_data(X,y,train_size,random_state):
+    """Sépare les données en ensembles d'entraînement et de test.
+
+    X : DataFrame
+    y : Etiquettes.
+    train_size : proportion de l'ensemble d'entraînement (0 < train_size < 1).
+    random_state : seed pour la reproductibilité.
+
+    Retourne X_train, X_test, y_train, y_test.
+    """
+    from sklearn.model_selection import train_test_split
+
+    if not isinstance(X, pd.DataFrame):
+        raise TypeError("X doit être un DataFrame pandas.")
+    if not isinstance(y, pd.Series):
+        raise TypeError("y doit être une Series pandas.")
+    if not (0 < train_size < 1):
+        raise ValueError("train_size doit être compris entre 0 et 1.")
+    
+    return train_test_split(X, y, train_size=train_size, random_state=random_state)
