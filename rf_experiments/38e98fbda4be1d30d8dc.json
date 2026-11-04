@@ -10,6 +10,36 @@
       "income_per_neighbor"
     ],
     "data": "8ecc3744e444f35534a1bcabedc7a3b405fb5bbf41a752e51ee9a57987b8c438",
+    "feature_values": {
+      "count": {
+        "dtype": "int32",
+        "sha256": "4ff1797c5d77c17d8aeb5ded1bb1f15949a980a21fc908b5d5c961c463a3edd5"
+      },
+      "income": {
+        "dtype": "int64",
+        "sha256": "8f97de429e8bc52db5354f70511e3dcbf5f22b77091bda1bb21b6fb157398d7e"
+      },
+      "income_per_neighbor": {
+        "dtype": "float64",
+        "sha256": "26743f82d5d0cb175db95e0d7644cbfe2d95104fb3f301577a7470c13d68a404"
+      },
+      "length": {
+        "dtype": "int32",
+        "sha256": "6d155fd2efbadc2581a1a076747b329753b7ce47daeb2e1cd101d55730ae248f"
+      },
+      "looped": {
+        "dtype": "int32",
+        "sha256": "f5691d0715b6c30355467aecf3385c4de5777c52ee2a4f30d6bdb4f4cc47b633"
+      },
+      "neighbors": {
+        "dtype": "int32",
+        "sha256": "6bbedbf669e5c32ada322017da337b18a6eade224f382635be1a9e128bce5d9e"
+      },
+      "weight": {
+        "dtype": "float64",
+        "sha256": "bb46676cf60fd114654cc2b90fd069b27646b9efa8d83b0021b4a213415acaf0"
+      }
+    },
     "learn": "58bb082aa03ea83afd521b1ebcd5e60d347fff9a5526052325d81af9607a5e46",
     "parameters": {
       "bootstrap": true,
@@ -23,39 +53,9 @@
     },
     "protocol": 2,
     "sklearn": "1.9.0",
-    "valid": "edd083146ba257c443843c6767d54bbb58f0b523873c3825c44da13e1b83a0a1",
-    "feature_values": {
-      "length": {
-        "dtype": "int32",
-        "sha256": "6d155fd2efbadc2581a1a076747b329753b7ce47daeb2e1cd101d55730ae248f"
-      },
-      "weight": {
-        "dtype": "float64",
-        "sha256": "bb46676cf60fd114654cc2b90fd069b27646b9efa8d83b0021b4a213415acaf0"
-      },
-      "count": {
-        "dtype": "int32",
-        "sha256": "4ff1797c5d77c17d8aeb5ded1bb1f15949a980a21fc908b5d5c961c463a3edd5"
-      },
-      "looped": {
-        "dtype": "int32",
-        "sha256": "f5691d0715b6c30355467aecf3385c4de5777c52ee2a4f30d6bdb4f4cc47b633"
-      },
-      "neighbors": {
-        "dtype": "int32",
-        "sha256": "6bbedbf669e5c32ada322017da337b18a6eade224f382635be1a9e128bce5d9e"
-      },
-      "income": {
-        "dtype": "int64",
-        "sha256": "8f97de429e8bc52db5354f70511e3dcbf5f22b77091bda1bb21b6fb157398d7e"
-      },
-      "income_per_neighbor": {
-        "dtype": "float64",
-        "sha256": "26743f82d5d0cb175db95e0d7644cbfe2d95104fb3f301577a7470c13d68a404"
-      }
-    }
+    "valid": "edd083146ba257c443843c6767d54bbb58f0b523873c3825c44da13e1b83a0a1"
   },
-  "fit_seconds": 16.71815367499994,
+  "fit_seconds": 8.970809315999986,
   "nodes": 307423,
   "train_rows": 133109,
   "validation_rows": 88233,
@@ -64,11 +64,10 @@
   "precision": 0.7941176470588235,
   "recall": 0.02423698384201077,
   "f1": 0.047038327526132406,
-  "average_precision": 0.13248742773514657,
+  "average_precision": 0.13248846271113265,
   "alerts": 34,
   "true_positives": 27,
   "false_positives": 7,
   "false_negatives": 1087,
-  "true_negatives": 87112,
-  "feature_fingerprints_added_after_run": true
+  "true_negatives": 87112
 }

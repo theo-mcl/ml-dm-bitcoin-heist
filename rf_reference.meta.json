@@ -22,7 +22,6 @@
     },
     "sklearn": "1.9.0"
   },
-  "model_sha256": "0cab8aabc027a023fabf071f579a04c18ece5f76d4caa1bfb75565acdbe68b79",
-  "origin": "provided_from_previous_notebook_execution",
-  "provenance_note": "Signatures recorded after the historical fit; historical split not cryptographically certified."
+  "model_sha256": "206f72b0251789d84e2acd04dda1b7f85accfd46483307fed6a7d54ad6d9a273",
+  "origin": "trained_with_signature"
 }

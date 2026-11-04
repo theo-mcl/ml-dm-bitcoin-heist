@@ -1,9 +1,15 @@
 """base functions for the Bitcoin Heist dataset"""
 
+import hashlib
+from html import escape
+
 import numpy as np
 import pandas as pd
-from html import escape
 from IPython.display import display
+from sklearn.metrics import (
+    average_precision_score, confusion_matrix, f1_score, precision_recall_curve,
+    precision_score, recall_score,
+)
 
 
 def _display_report(report, 
@@ -446,3 +452,66 @@ def show_table(table):
     ])
     display(styled)
 
+
+def check_group_split(y, groups, partitions):
+    """Contrôle la présence des deux classes, les indices et l'absence d'adresse commune."""
+    if len(y) != len(groups):
+        raise ValueError("La cible et les groupes doivent avoir la même longueur.")
+    used_indices, used_groups = set(), set()
+    for name, indices in partitions.items():
+        indices = np.asarray(indices)
+        if indices.ndim != 1 or not np.issubdtype(indices.dtype, np.integer):
+            raise ValueError(f"Indices invalides dans {name}.")
+        if not len(indices) or (indices < 0).any() or (indices >= len(y)).any():
+            raise ValueError(f"Indices vides ou hors limites dans {name}.")
+        current_indices = set(indices.tolist())
+        if len(current_indices) != len(indices) or used_indices & current_indices:
+            raise ValueError("Des observations sont répétées entre les sous-ensembles.")
+        if set(np.unique(y[indices])) != {0, 1}:
+            raise ValueError(f"Les deux classes doivent être présentes dans {name}.")
+        current_groups = set(np.unique(groups[indices]).tolist())
+        if used_groups & current_groups:
+            raise ValueError("Des adresses sont communes aux sous-ensembles.")
+        used_groups |= current_groups
+        used_indices |= current_indices
+
+
+#permet de savoir si les données ont changé depuis le dernier entraînement
+def array_digest(values):
+    return hashlib.sha256(np.ascontiguousarray(values).tobytes()).hexdigest()
+
+
+def threshold_table(y_true, scores):
+    """Compte les alertes à tous les seuils distincts sans matrice géante."""
+    y_true, scores = np.asarray(y_true), np.asarray(scores)
+
+    if y_true.ndim != 1 or scores.shape != y_true.shape or set(np.unique(y_true)) != {0, 1}:
+        raise ValueError("Deux vecteurs de même taille et les deux classes sont requis.")
+    if not np.isfinite(scores).all() or ((scores < 0) | (scores > 1)).any():
+        raise ValueError("Les scores doivent être finis et compris entre 0 et 1.")
+    
+    precision, recall, thresholds = precision_recall_curve(y_true, scores)
+    tp = np.rint(recall[:-1] * y_true.sum()).astype(int) #on fait le calcul du nombre de vrais positifs pour chaque seuil, en prenant soin d'arrondir à l'entier supérieur
+    alerts = len(scores) - np.searchsorted(np.sort(scores), thresholds, side="left") #combien d'alertes seraient données avec ce seuil
+    total = precision[:-1] + recall[:-1]
+    f1 = np.divide(2*precision[:-1]*recall[:-1], total, out=np.zeros_like(total), where=total>0)
+    return pd.DataFrame(dict(threshold=thresholds, precision=precision[:-1], recall=recall[:-1],
+                             f1=f1, alerts=alerts, true_positives=tp, false_positives=alerts-tp))
+
+
+def decision_metrics(y_true, scores, threshold):
+    # C'est ici que le score devient une décision : 1 signifie « à examiner ».
+    prediction = (scores >= threshold).astype(np.int8)
+    tn, fp, fn, tp = confusion_matrix(y_true, prediction, labels=[0, 1]).ravel()
+    return dict(threshold=float(threshold), precision=precision_score(y_true, prediction, zero_division=0),
+                recall=recall_score(y_true, prediction, zero_division=0),
+                f1=f1_score(y_true, prediction, zero_division=0),
+                average_precision=average_precision_score(y_true, scores),
+                alerts=int(tp+fp), true_positives=int(tp), false_positives=int(fp),
+                false_negatives=int(fn), true_negatives=int(tn))
+
+
+def best_f1_threshold(y_true, scores):
+    table = threshold_table(y_true, scores)
+    # En cas d'égalité de F1, retenir le seuil le plus élevé pour avoir moins d'alertes.
+    return float(table.sort_values(["f1", "threshold"], ascending=False).iloc[0]["threshold"])
