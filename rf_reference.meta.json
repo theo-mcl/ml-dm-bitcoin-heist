@@ -1,0 +1,28 @@
+{
+  "signature": {
+    "data": "8ecc3744e444f35534a1bcabedc7a3b405fb5bbf41a752e51ee9a57987b8c438",
+    "matrix": "198ef0c2cae5983070458bf204b4f304ff4c8b0efacd353f8fdde47aab3e122c",
+    "learn": "3d27a10688e571278089e226d2ea7075fe61ae178f822f4781b2964fcf6782cd",
+    "columns": [
+      "length",
+      "weight",
+      "count",
+      "looped",
+      "neighbors",
+      "income"
+    ],
+    "parameters": {
+      "n_estimators": 101,
+      "criterion": "entropy",
+      "max_features": "sqrt",
+      "bootstrap": true,
+      "class_weight": null,
+      "random_state": 45,
+      "n_jobs": 2
+    },
+    "sklearn": "1.9.0"
+  },
+  "model_sha256": "0cab8aabc027a023fabf071f579a04c18ece5f76d4caa1bfb75565acdbe68b79",
+  "origin": "provided_from_previous_notebook_execution",
+  "provenance_note": "Signatures recorded after the historical fit; historical split not cryptographically certified."
+}
