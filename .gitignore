@@ -2,3 +2,7 @@ BitcoinHeistData.csv
 .venv/
 __pycache__/
 .ipynb_checkpoints/
+
+# Les paramètres et les tableaux restent partageables ; ces caches sont volumineux.
+*.joblib
+rf_experiments/*.npz
