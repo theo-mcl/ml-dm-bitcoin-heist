@@ -28,7 +28,7 @@
     "min_samples_leaf": 5
   },
   "reference_threshold": 0.17986798679867985,
-  "candidate_threshold": 0.13376245574361548,
+  "candidate_threshold": 0.12940805459163007,
   "final_model": "Candidat retenu",
   "candidate_model_path": "rf_experiments/5ecfa6c00f3cca5a1164.joblib",
   "feature_fingerprints": {
